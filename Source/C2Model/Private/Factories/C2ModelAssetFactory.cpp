@@ -81,6 +81,7 @@ UObject* UC2ModelAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPar
 			}
 			C2Materials.Add(CoDMaterial);
 		}
+		//Mesh->Bones.Empty();
 		if (Mesh->Bones.Num() > 1)
 		{
 			if (!FPackageName::DoesPackageExist(wepathPackage))

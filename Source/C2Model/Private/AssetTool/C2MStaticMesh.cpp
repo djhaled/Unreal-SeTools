@@ -51,20 +51,20 @@ FMeshDescription C2MStaticMesh::CreateMeshDescription(C2Mesh* InMesh)
         for (int i = 0; i < surfirst->Vertexes.Num(); i++)
         {
             const FVertexID VertexID = MeshDescription.CreateVertex();
-            TargetVertexPositions[VertexID] = surfirst->Vertexes[i].Vertice;
+        	auto TESTVERT = FVector(surfirst->Vertexes[i].Vertice.X,-surfirst->Vertexes[i].Vertice.Y,surfirst->Vertexes[i].Vertice.Z);
+            //TargetVertexPositions[VertexID] = surfirst->Vertexes[i].Vertice;
+        	TargetVertexPositions[VertexID] = TESTVERT;
             VertexIndexToVertexID.Add(VertexID);
 
             const FVertexInstanceID VertexInstanceID = MeshDescription.CreateVertexInstance(VertexID);
             VertexIndexToVertexInstanceID.Add(VertexInstanceID);
             GlobalVertexIndex++;
-
-            TargetVertexInstanceNormals[VertexInstanceID] = surfirst->Vertexes[i].Normal;
+        	TargetVertexInstanceNormals[VertexInstanceID] = surfirst->Vertexes[i].Normal;
             TargetVertexInstanceColors[VertexInstanceID] = surfirst->Vertexes[i].Color.ToVector();
 
             //TArray<FVector2D> VertexUVs = InMesh->UVs[i];
             for (int u = 0; u < InMesh->UVSetCount; u++)
             {
-				//TargetVertexInstanceUVs.Set(VertexInstanceID, u, FVector2D(surfirst->Vertexes[i].UV.X, 1 - surfirst->Vertexes[i].UV.Y));
                 TargetVertexInstanceUVs.Set(VertexInstanceID, u, FVector2D(surfirst->Vertexes[i].UV.X, surfirst->Vertexes[i].UV.Y)); // We gotta flip UV
             }
         }
@@ -305,7 +305,8 @@ UObject* C2MStaticMesh::CreateSkeletalMeshFromMeshDescription(UObject* ParentPac
 	}
 	SkelMeshImportData.Faces.AddZeroed(InMeshDescription.Triangles().Num());
 	SkelMeshImportData.Wedges.Reserve(InMeshDescription.VertexInstances().Num());
-	SkelMeshImportData.NumTexCoords = FMath::Min<int32>(VertexInstanceUVs.GetNumElements(), (int32)MAX_TEXCOORDS);
+
+	SkelMeshImportData.NumTexCoords = VertexInstanceUVs.GetNumIndices();
 	for (FTriangleID TriangleID : InMeshDescription.Triangles().GetElementIDs())
 	{
 		FPolygonGroupID PolygonGroupID = InMeshDescription.GetTrianglePolygonGroup(TriangleID);
@@ -338,15 +339,16 @@ UObject* C2MStaticMesh::CreateSkeletalMeshFromMeshDescription(UObject* ParentPac
 			}
 			for (int32 UVChannelIndex = 0; UVChannelIndex < (int32)(2); ++UVChannelIndex)
 			{
-				Wedge.UVs[UVChannelIndex] = VertexInstanceUVs.Get(VertexInstanceID, UVChannelIndex);
+				FVector2D uv = VertexInstanceUVs.Get(VertexInstanceID, UVChannelIndex);
+				Wedge.UVs[UVChannelIndex] = FVector2D(uv.X,uv.Y);
 			}
 			Face.TangentX[Corner] = VertexInstanceTangents[VertexInstanceID];
 			Face.TangentZ[Corner] = VertexInstanceNormals[VertexInstanceID];
 			Face.TangentY[Corner] = FVector::CrossProduct(VertexInstanceNormals[VertexInstanceID], VertexInstanceTangents[VertexInstanceID]).GetSafeNormal() * VertexInstanceBiNormalSigns[VertexInstanceID];
 			Face.WedgeIndex[Corner] = SkelMeshImportData.Wedges.Add(Wedge);
 		}
-		Swap(Face.WedgeIndex[0], Face.WedgeIndex[2]);
-		Swap(Face.TangentZ[0], Face.TangentZ[2]);
+		//Swap(Face.WedgeIndex[0], Face.WedgeIndex[2]);
+		//Swap(Face.TangentZ[0], Face.TangentZ[2]);
 	}
 	for (auto PskBone : InMesh->Bones)
 	{
@@ -450,11 +452,6 @@ UObject* C2MStaticMesh::CreateSkeletalMeshFromMeshDescription(UObject* ParentPac
 	{
 		SkeletalMesh->BeginDestroy();
 		return nullptr;
-	}
-
-	for (auto Material : SkelMeshImportData.Materials)
-	{
-		SkeletalMesh->GetMaterials().Add(FSkeletalMaterial(Material.Material.Get()));
 	}
 
 	SkeletalMesh->PostEditChange();
