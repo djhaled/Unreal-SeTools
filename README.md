@@ -20,8 +20,13 @@ Unreal-SeTools is a plugin for Unreal Engine 4.27 that allows importing Call of 
 
 | Unreal Engine Version | `.semodel` Compatibility | `.seanim` Compatibility |
 |-----------------------|-------------------------|-------------------------|
-| 4.27                   | :heavy_check_mark:      | :heavy_check_mark:      |
-| 5.3 (Separate Branch)                  | :heavy_check_mark:      | :x: 
+| 4.27                                   | :heavy_check_mark:      | :heavy_check_mark:      |
+| 5.3 (Other Branch)                  | :heavy_check_mark:      | :heavy_check_mark: 
+| 5.2 (Other Branch )                  | :heavy_check_mark:      | :heavy_check_mark: 
+| 5.1 (Other Branch)                  | :question:    | :question:
+| 5.0 (Other Branch)                  | :question:     | :question:
+
+          Let me know on discord if works on any versions that have the ":question:" in it. 
 ## Usage
 
 1. After installing the plugin, open your Unreal Engine project.
