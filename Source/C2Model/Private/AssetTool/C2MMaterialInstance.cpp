@@ -97,6 +97,7 @@ void C2MMaterialInstance::SetMaterialTextures(
 {
 	for (auto Texture : CODMat->Textures)
 	{
+		if (!Texture.TextureObject) { continue;}
 		UTexture* TextureAsset = Cast<UTexture>(Texture.TextureObject);
 		FString& TextureType = Texture.TextureType;
 		if (TextureAsset)

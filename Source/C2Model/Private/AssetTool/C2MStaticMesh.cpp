@@ -51,9 +51,7 @@ FMeshDescription C2MStaticMesh::CreateMeshDescription(C2Mesh* InMesh)
         for (int i = 0; i < surfirst->Vertexes.Num(); i++)
         {
             const FVertexID VertexID = MeshDescription.CreateVertex();
-        	auto TESTVERT = FVector(surfirst->Vertexes[i].Vertice.X,-surfirst->Vertexes[i].Vertice.Y,surfirst->Vertexes[i].Vertice.Z);
-            //TargetVertexPositions[VertexID] = surfirst->Vertexes[i].Vertice;
-        	TargetVertexPositions[VertexID] = TESTVERT;
+        	TargetVertexPositions[VertexID] = FVector(surfirst->Vertexes[i].Vertice.X,-surfirst->Vertexes[i].Vertice.Y,surfirst->Vertexes[i].Vertice.Z);
             VertexIndexToVertexID.Add(VertexID);
 
             const FVertexInstanceID VertexInstanceID = MeshDescription.CreateVertexInstance(VertexID);
@@ -347,8 +345,6 @@ UObject* C2MStaticMesh::CreateSkeletalMeshFromMeshDescription(UObject* ParentPac
 			Face.TangentY[Corner] = FVector::CrossProduct(VertexInstanceNormals[VertexInstanceID], VertexInstanceTangents[VertexInstanceID]).GetSafeNormal() * VertexInstanceBiNormalSigns[VertexInstanceID];
 			Face.WedgeIndex[Corner] = SkelMeshImportData.Wedges.Add(Wedge);
 		}
-		//Swap(Face.WedgeIndex[0], Face.WedgeIndex[2]);
-		//Swap(Face.TangentZ[0], Face.TangentZ[2]);
 	}
 	for (auto PskBone : InMesh->Bones)
 	{
@@ -357,6 +353,8 @@ UObject* C2MStaticMesh::CreateSkeletalMeshFromMeshDescription(UObject* ParentPac
 		Bone.ParentIndex = PskBone.ParentIndex == -1 ? INDEX_NONE : PskBone.ParentIndex;
 
 		FVector PskBonePos = PskBone.LocalPosition;
+		PskBone.LocalRotation.Yaw *= -1.0;
+		PskBone.LocalRotation.Roll *= -1.0;
 		FQuat PskBoneRot = PskBone.LocalRotation.Quaternion();
 		//if (PskBone.LocalPosition != FVector::ZeroVector || PskBone.LocalRotation != FQuat::Identity)
 		//{
@@ -365,7 +363,7 @@ UObject* C2MStaticMesh::CreateSkeletalMeshFromMeshDescription(UObject* ParentPac
 		//}
 		FTransform PskTransform;
 
-		PskTransform.SetLocation(PskBonePos);
+		PskTransform.SetLocation(FVector(PskBonePos.X,-PskBonePos.Y,PskBonePos.Z));
 		PskTransform.SetRotation(PskBoneRot);
 		//PskTransform.SetRotation(FQuat(PskBoneRot.X, -PskBoneRot.Y, PskBoneRot.Z, (PskBone.ParentIndex == -1) ? -PskBoneRot.W : PskBoneRot.W));
 
