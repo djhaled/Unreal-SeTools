@@ -72,16 +72,18 @@ UObject* UC2ModelAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPar
 				FString FixedTexture = Texture.Replace(TEXT("\\_images\\"), TEXT(""));
 
 				FString FixedImageFilePath = DiskTexturesPath + FixedTexture;
-
-				if (!FPackageName::DoesPackageExist(FPaths::Combine(UnrealTexturesPath, C2MTexture::NoIllegalSigns(FixedTexture))) && FPaths::FileExists(FixedImageFilePath))
+				if (FPaths::FileExists(FixedImageFilePath))
+				{
 					CodTexture.TextureObject = ImportTexture(FixedImageFilePath, InParent);
+				}
 				else
 					UE_LOG(LogTemp, Log, TEXT("NICE"));
+				
 				CoDMaterial->Textures.Add(CodTexture);
 			}
 			C2Materials.Add(CoDMaterial);
 		}
-		//Mesh->Bones.Empty();
+		Mesh->Bones.Empty();
 		if (Mesh->Bones.Num() > 1)
 		{
 			if (!FPackageName::DoesPackageExist(wepathPackage))
@@ -105,18 +107,29 @@ UObject* UC2ModelAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPar
 	return MeshCreated;
 }
 
-UObject* UC2ModelAssetFactory::ImportTexture(FString FilePath,UObject* InParent)
+UObject* UC2ModelAssetFactory::ImportTexture(FString FilePath, UObject* InParent)
 {
-
-	//
 	UAutomatedAssetImportData* importData = NewObject<UAutomatedAssetImportData>();
 	importData->bReplaceExisting = true;
-	// PathTextures
+
 	FString ParentPath = FPaths::GetPath(InParent->GetPathName());
 	FString MaterialsPath = FPaths::Combine(*ParentPath, TEXT("Materials"));
 	FString TexturePath = FPaths::Combine(*MaterialsPath, TEXT("Textures"));
-	importData->DestinationPath = TexturePath;
-	
+
+	FString FileName = FPaths::GetCleanFilename(FilePath); // Extract just the filename from the path
+	FString SanitizedFileName = C2MTexture::NoIllegalSigns(FileName); // Apply your sanitization function to the filename
+
+	FString DestinationTexturePath = FPaths::Combine(TexturePath, SanitizedFileName); // Construct the destination path
+	FString NewDestFix = DestinationTexturePath.Replace(TEXT(".png"),TEXT(""));
+	// Check if the texture already exists
+	if (UTexture* LoadedTexture = LoadObject<UTexture>(nullptr, *NewDestFix))
+	{
+		// Texture already exists, return the loaded texture object
+		return LoadedTexture;
+	}
+
+	// If the texture doesn't exist, you can proceed with importing it
+	importData->DestinationPath = DestinationTexturePath;
 	importData->Filenames = TArray<FString>{ FilePath };
 	FAssetToolsModule& AssetToolsModule = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools");
 	if (!AssetToolsModule.Get().ImportAssetsAutomated(importData).IsValidIndex(0))
@@ -134,10 +147,7 @@ UObject* UC2ModelAssetFactory::ImportTexture(FString FilePath,UObject* InParent)
 		importedTexture->SRGB = false;
 	}
 	importedTexture->MarkPackageDirty();
-	// Importing hundreds/thousands of textures without saving will probably cause UE to crash due to lack of memory, so we save after every import.
-	//UPackage::SavePackage(importedAssets[0]->GetPackage(), nullptr, EObjectFlags::RF_Public | EObjectFlags::RF_Standalone, *(importData->DestinationPath + FPackageName::GetAssetPackageExtension()));
 	UEditorLoadingAndSavingUtils::SavePackages(TArray<UPackage*>{importedTexture->GetPackage()}, false);
-	//UPackage::SavePackage(Package, importedTexture, RF_Public | RF_Standalone, *PackageFileName, GError, nullptr, false, true, SAVE_NoError);
 	return importedTexture;
 }
 

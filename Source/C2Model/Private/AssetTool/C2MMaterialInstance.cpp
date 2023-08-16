@@ -30,7 +30,7 @@ UMaterialInterface* C2MMaterialInstance::CreateMixMaterialInstance( TArray<C2Mat
 	//
 	//
 	FString ParentPath = FPaths::GetPath(ParentPackage->GetPathName());
-	FString MaterialsPath = FPaths::Combine(*ParentPath, TEXT("Materials/"));
+	FString MaterialsPath = FPaths::Combine(*ParentPath, TEXT("Materials"),FullMaterialName);
 	UPackage* MaterialPackage = CreatePackage(nullptr, *MaterialsPath);
 	check(MaterialPackage);
 	MaterialPackage->FullyLoad();
