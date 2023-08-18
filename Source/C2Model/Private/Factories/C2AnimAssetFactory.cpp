@@ -89,6 +89,7 @@ UObject* UC2AnimAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
     //
     AnimSequence->ResetAnimation();
     auto MeshBones = Skeleton->GetReferenceSkeleton().GetRawRefBoneInfo();
+    auto BonePoses = Skeleton->GetReferenceSkeleton().GetRawRefBonePose();
     TArray64<uint8> FileDataOld;
     if (FFileHelper::LoadFileToArray(FileDataOld, *Filename))
     {
@@ -108,7 +109,8 @@ UObject* UC2AnimAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
         for (int32 BoneIndex = 0; BoneIndex < Anim->BonesInfos.Num(); BoneIndex++)
         {
             const BoneInfo& BoneInfo = Anim->BonesInfos[BoneIndex];
-            if (!hasBone(MeshBones, BoneInfo.Name)) { continue; }
+            auto BoneMesh = GetBone(MeshBones, BoneInfo.Name);
+            if (BoneMesh.Name == "None") { continue; }
             if (BoneInfo.Name == "tag_camera") { continue; }
             FRawAnimSequenceTrack RawAnimSequenceTrack;
             //Anim->Header.FrameCountBuffer = 1;
@@ -123,7 +125,23 @@ UObject* UC2AnimAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
                 if (Position != FVector3f(-1, -1, -1))
                 {
                     Position.Y *= -1.0;
-                    RawAnimSequenceTrack.PosKeys.Add(Position);
+                    if (Anim->Header.AnimType == ESEAnimAnimationType::SEANIM_ABSOLUTE)
+                    {
+                        RawAnimSequenceTrack.PosKeys.Add(Position);
+                    }
+                    else
+                    {
+                        FTransform BonePoseTransform = BonePoses[GetBoneIndex(MeshBones,BoneInfo.Name)];
+                        auto BonePosePosition = BonePoseTransform.GetTranslation();
+                        auto RelativeLocationVector = FVector3f(Position.X + BonePosePosition.X, Position.Y + BonePosePosition.Y, Position.Z + BonePosePosition.Z);
+                        RawAnimSequenceTrack.PosKeys.Add(RelativeLocationVector);
+                    }
+                }
+                else
+                {
+                    FTransform BonePoseTransform = BonePoses[GetBoneIndex(MeshBones, BoneInfo.Name)];
+                    auto BonePosePosition = FVector3f(BonePoseTransform.GetTranslation());
+                    RawAnimSequenceTrack.PosKeys.Add(BonePosePosition);
                 }
         
                 if (Rotation != FQuat4f(-1, -1, -1, -1))
@@ -132,8 +150,7 @@ UObject* UC2AnimAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
                     LocalRotator.Yaw *= -1.0f;
                     LocalRotator.Roll *= -1.0f;
                     Rotation = LocalRotator.Quaternion();
-        
-                    RawAnimSequenceTrack.RotKeys.Add(FQuat4f(Rotation.X, Rotation.Y, Rotation.Z, Rotation.W));
+                   RawAnimSequenceTrack.RotKeys.Add(FQuat4f(Rotation.X, Rotation.Y, Rotation.Z, Rotation.W));
                 }
         
                 if (Scale != FVector3f(-1, -1, -1))
@@ -183,14 +200,26 @@ UObject* UC2AnimAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
     return AnimSequence;
 }
 
-bool UC2AnimAssetFactory::hasBone(TArray<FMeshBoneInfo> Bones, const FString& AnimBoneName)
+FMeshBoneInfo UC2AnimAssetFactory::GetBone(TArray<FMeshBoneInfo> Bones, const FString& AnimBoneName)
 {
     for (const auto& Bone : Bones)
     {
         if (Bone.Name.ToString() == AnimBoneName)
         {
-            return true;
+            return Bone;
         }
     }
-    return false;
+    return FMeshBoneInfo();
+}
+
+int UC2AnimAssetFactory::GetBoneIndex(TArray<FMeshBoneInfo> Bones, const FString& AnimBoneName)
+{
+    for (int32 Index = 0; Index < Bones.Num(); ++Index)
+    {
+        if (Bones[Index].Name.ToString() == AnimBoneName)
+        {
+            return Index;
+        }
+    }
+    return -69;
 }
