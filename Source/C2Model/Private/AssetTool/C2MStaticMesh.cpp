@@ -57,6 +57,7 @@ FMeshDescription C2MStaticMesh::CreateMeshDescription(C2Mesh* InMesh)
             const FVertexInstanceID VertexInstanceID = MeshDescription.CreateVertexInstance(VertexID);
             VertexIndexToVertexInstanceID.Add(VertexInstanceID);
             GlobalVertexIndex++;
+			TargetVertexInstanceNormals[VertexInstanceID] = FVector(surfirst->Vertexes[i].Normal.X, -surfirst->Vertexes[i].Normal.Y, surfirst->Vertexes[i].Normal.Z);
         	TargetVertexInstanceNormals[VertexInstanceID] = surfirst->Vertexes[i].Normal;
             TargetVertexInstanceColors[VertexInstanceID] = surfirst->Vertexes[i].Color.ToVector();
 
