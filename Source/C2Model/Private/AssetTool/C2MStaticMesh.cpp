@@ -5,7 +5,9 @@
 #include "StaticMeshAttributes.h"
 #include "IMeshBuilderModule.h"
 #include "Engine/SkeletalMesh.h"
+#include "PhysicsEngine/PhysicsAsset.h"
 #include "MaterialDomain.h"
+#include "PhysicsAssetUtils.h"
 #include "Utils/C2MUtilsImport.h"
 #include "Rendering/SkinWeightVertexBuffer.h"
 #include "Rendering/SkeletalMeshLODImporterData.h"
@@ -481,6 +483,23 @@ UObject* C2MStaticMesh::CreateSkeletalMeshFromMeshDescription(UObject* ParentPac
 	Skeleton->PostEditChange();
 	FAssetRegistryModule::AssetCreated(Skeleton);
 	Skeleton->MarkPackageDirty();
+
+	// Physics Asset
+	FPhysAssetCreateParams NewBodyData;
+	FString Phy_ObjectName = FString::Printf(TEXT("%s_PhysicsAsset"), *SkeletalMesh->GetName());
+	auto PhysicsPackage = CreatePackage(*FPaths::Combine(FPaths::GetPath(ParentPackage->GetPathName()), Phy_ObjectName));
+	UPhysicsAsset* PhysicsAsset = NewObject<UPhysicsAsset>(PhysicsPackage, FName(*Phy_ObjectName), RF_Public | RF_Standalone);
+	FText CreationErrorMessage;
+	FPhysicsAssetUtils::CreateFromSkeletalMesh(PhysicsAsset, SkeletalMesh, NewBodyData, CreationErrorMessage);
+	if (!SkeletalMesh->GetPhysicsAsset())
+	{
+		SkeletalMesh->SetPhysicsAsset(PhysicsAsset);
+	}
+	PhysicsAsset->MarkPackageDirty();
+	PhysicsAsset->PostEditChange();
+	FAssetRegistryModule::AssetCreated(PhysicsAsset);
+
+	//
 	return SkeletalMesh;
 }
 

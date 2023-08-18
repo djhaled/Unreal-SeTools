@@ -114,6 +114,14 @@ UObject* UC2ModelAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPar
 
 		C2MStaticMesh MeshBuildingClass;
 		MeshBuildingClass.MeshOptions = UserSettings;
+		if (UserSettings->bAutomaticallyDecideMeshType)
+		{
+			if (Mesh->Bones.Num() > 1)
+			{
+				UserSettings->MeshType = EMeshType::SkeletalMesh;
+			}
+		}
+
 		MeshCreated = MeshBuildingClass.CreateMesh(InParent,ModelPackage,Mesh,C2Materials);
 	}
 	if (MeshCreated)
