@@ -1,9 +1,9 @@
 ﻿{
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.0",
+	"VersionName": "0.7",
 	"FriendlyName": "C2Model",
-	"Description": "Tool to import meshes, animations from greyhound dor apps that use .c2model / .c2anim formats",
+	"Description": "Tool to import meshes, animations from greyhound or exporters that use .semodel / .seanim formats",
 	"Category": "Other",
 	"CreatedBy": "bk",
 	"CreatedByURL": "",
