@@ -1,6 +1,6 @@
 # Unreal-SeTools Plugin
 
-Unreal-SeTools is a plugin for Unreal Engine 4.27 that allows importing Call of Duty `.semodel` and `.seanim` files into Unreal Engine as static or skeletal meshes and animation sequences.
+Unreal-SeTools is a plugin for Unreal Engine 5 that allows importing Call of Duty `.semodel` and `.seanim` files into Unreal Engine as static or skeletal meshes and animation sequences.
 
 
 #
@@ -13,18 +13,19 @@ Unreal-SeTools is a plugin for Unreal Engine 4.27 that allows importing Call of 
 ## Installation
 
 1. Download or clone the Unreal-SeTools repository.
-2. Copy the plugin's folder to your project's `Plugins` directory.
+2. Create a Plugin's folder if you don't already have and create a folder inside it called C2Model
+3. Copy the download folders (Content,Resources,Source,.uplugin file) to the C2Model folder.
 
 
 ## Compatibility
 
 | Unreal Engine Version | `.semodel` Compatibility | `.seanim` Compatibility |
 |-----------------------|-------------------------|-------------------------|
-| 4.27                                   | :heavy_check_mark:      | :heavy_check_mark:      |
-| 5.3 (Other Branch)                  | :heavy_check_mark:      | :heavy_check_mark: 
-| 5.2 (Other Branch )                  | :heavy_check_mark:      | :heavy_check_mark: 
-| 5.1 (Other Branch)                  | :question:    | :question:
-| 5.0 (Other Branch)                  | :question:     | :question:
+| 4.27  (4.27 Branch )   | :heavy_check_mark:      | :heavy_check_mark:      |
+| 5.3                    | :heavy_check_mark:      | :heavy_check_mark: 
+| 5.2                    | :heavy_check_mark:      | :heavy_check_mark: 
+| 5.1                    | :question:              | :question: 
+| 5.0                    | :question:              | :question:
 
           Let me know on discord if works on any versions that have the ":question:" in it. 
 ## Usage
