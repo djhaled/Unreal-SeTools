@@ -15,6 +15,7 @@
 #include "Misc/ScopedSlowTask.h"
 #include "Commandlets/ImportAssetsCommandlet.h"
 #include "FileHelpers.h"
+#include "AnimationBlueprintLibrary.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(C2AnimAssetFactory)
 #define LOCTEXT_NAMESPACE "C2AnimAssetFactory"
@@ -88,8 +89,8 @@ UObject* UC2AnimAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
     FString DeltaRootBone = "tag_origin";
     //
     AnimSequence->ResetAnimation();
-    auto MeshBones = Skeleton->GetReferenceSkeleton().GetRawRefBoneInfo();
-    auto BonePoses = Skeleton->GetReferenceSkeleton().GetRawRefBonePose();
+    Bones = Skeleton->GetReferenceSkeleton().GetRawRefBoneInfo();
+    BonePoses = Skeleton->GetReferenceSkeleton().GetRawRefBonePose();
     TArray64<uint8> FileDataOld;
     if (FFileHelper::LoadFileToArray(FileDataOld, *Filename))
     {
@@ -97,10 +98,9 @@ UObject* UC2AnimAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
         C2Anim* Anim = new C2Anim();
         Anim->ParseAnim(Reader);
         Controller.SetFrameRate(FFrameRate(Anim->Header.FrameRate, 1),bShouldTransact);
-        int test = Anim->Header.FrameCountBuffer;
-        Controller.SetNumberOfFrames(FFrameNumber(test), bShouldTransact);
+        Controller.SetNumberOfFrames(FFrameNumber(int(Anim->Header.FrameCountBuffer)), bShouldTransact);
         UE_LOG(LogTemp, Warning, TEXT("This animation '%s' is of type %s"), *Filename, *UEnum::GetValueAsString(Anim->Header.AnimType));
-        for (int32 BoneTreeIndex = 0; BoneTreeIndex < MeshBones.Num(); BoneTreeIndex++)
+        for (int32 BoneTreeIndex = 0; BoneTreeIndex < Bones.Num(); BoneTreeIndex++)
         {
             const FName BoneTreeName = Skeleton->GetReferenceSkeleton().GetBoneName(BoneTreeIndex);
             Controller.AddBoneCurve(BoneTreeName, bShouldTransact);
@@ -108,89 +108,112 @@ UObject* UC2AnimAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
         
         for (int32 BoneIndex = 0; BoneIndex < Anim->BonesInfos.Num(); BoneIndex++)
         {
-            const BoneInfo& BoneInfo = Anim->BonesInfos[BoneIndex];
-            auto BoneMesh = GetBone(MeshBones, BoneInfo.Name);
+            const BoneInfo& KeyFrameBone = Anim->BonesInfos[BoneIndex];
+            auto BoneMesh = GetBone(KeyFrameBone.Name);
             if (BoneMesh.Name == "None") { continue; }
-            if (BoneInfo.Name == "tag_camera") { continue; }
-            FRawAnimSequenceTrack RawAnimSequenceTrack;
-            //Anim->Header.FrameCountBuffer = 1;
-            for (uint32_t FrameIndex = 0; FrameIndex < Anim->Header.FrameCountBuffer; FrameIndex++)
+            // Add Bone Transform curve, and add base pose transform to start
+            FSmartName NewCurveName;
+            FTransform BonePoseTransform = BonePoses[GetBoneIndex(KeyFrameBone.Name)];
+            Skeleton->AddSmartNameAndModify(USkeleton::AnimTrackCurveMappingName, FName(KeyFrameBone.Name), NewCurveName);
+            FAnimationCurveIdentifier TransformCurveId(NewCurveName, ERawCurveTrackTypes::RCT_Transform);
+            AnimSequence->GetController().AddCurve(TransformCurveId, AACF_DriveTrack | AACF_Editable);
+            AnimSequence->GetController().SetTransformCurveKey(TransformCurveId,0,BonePoseTransform);
+
+            // Loop thru actual bone positions
+            if (KeyFrameBone.BonePositions.Num() > 0)
             {
-                FVector3f Position = BoneInfo.GetPositionAtFrame(FrameIndex);
-        
-                FQuat4f Rotation = BoneInfo.GetRotationAtFrame(FrameIndex);
-        
-                FVector3f Scale = BoneInfo.GetScaleAtFrame(FrameIndex);
-        
-                if (Position != FVector3f(-1, -1, -1))
+                TArray<TArray<FRichCurveKey>> PosCurveKeys;
+                TArray<FRichCurveKey> PositionKeysZ;
+                TArray<FRichCurveKey> PositionKeysY;
+                TArray<FRichCurveKey> PositionKeysX;
+                FVector relative_transform;
+                
+                if (Anim->Header.AnimType == ESEAnimAnimationType::SEANIM_ABSOLUTE )
                 {
-                    Position.Y *= -1.0;
-                    if (Anim->Header.AnimType == ESEAnimAnimationType::SEANIM_ABSOLUTE)
-                    {
-                        RawAnimSequenceTrack.PosKeys.Add(Position);
-                    }
-                    else
-                    {
-                        FTransform BonePoseTransform = BonePoses[GetBoneIndex(MeshBones,BoneInfo.Name)];
-                        auto BonePosePosition = BonePoseTransform.GetTranslation();
-                        auto RelativeLocationVector = FVector3f(Position.X + BonePosePosition.X, Position.Y + BonePosePosition.Y, Position.Z + BonePosePosition.Z);
-                        RawAnimSequenceTrack.PosKeys.Add(RelativeLocationVector);
-                    }
+                    relative_transform = FVector(0,0,0);
                 }
                 else
                 {
-                    FTransform BonePoseTransform = BonePoses[GetBoneIndex(MeshBones, BoneInfo.Name)];
-                    auto BonePosePosition = FVector3f(BonePoseTransform.GetTranslation());
-                    RawAnimSequenceTrack.PosKeys.Add(BonePosePosition);
+                    FVector BonePosePosition = BonePoseTransform.GetTranslation();
+                    relative_transform = BonePosePosition;
                 }
-        
-                if (Rotation != FQuat4f(-1, -1, -1, -1))
+
+                for (size_t i = 0; i < KeyFrameBone.BonePositions.Num(); i++)
                 {
-                    FRotator3f LocalRotator = Rotation.Rotator();
+                    FVector boneFrameVector;
+                    auto BonePosAnimFrame = KeyFrameBone.BonePositions[i];
+                    BonePosAnimFrame.Value[1] *= -1;
+                    auto TimeInSeconds = static_cast<float>(BonePosAnimFrame.Frame) / Anim->Header.FrameRate;
+
+                    // Relative_transform should be 0.0.0 if absolute anim.. its needed for relative/delta/additive
+                    boneFrameVector.X = BonePosAnimFrame.Value[0] + relative_transform[0];
+                    boneFrameVector.Y = BonePosAnimFrame.Value[1] + relative_transform[1];
+                    boneFrameVector.Z = BonePosAnimFrame.Value[2] + relative_transform[2];
+                    
+                    PositionKeysX.Add(FRichCurveKey(TimeInSeconds, boneFrameVector.X));
+                    PositionKeysY.Add(FRichCurveKey(TimeInSeconds, boneFrameVector.Y));
+                    PositionKeysZ.Add(FRichCurveKey(TimeInSeconds, boneFrameVector.Z));
+                }
+                PosCurveKeys.Add(PositionKeysX);
+                PosCurveKeys.Add(PositionKeysY);
+                PosCurveKeys.Add(PositionKeysZ);
+                for (int i = 0; i < 3; ++i)
+                {
+                    const EVectorCurveChannel Axis = static_cast<EVectorCurveChannel>(i);
+                    UAnimationCurveIdentifierExtensions::GetTransformChildCurveIdentifier(TransformCurveId, ETransformCurveChannel::Position, Axis);
+                    AnimSequence->GetController().SetCurveKeys(TransformCurveId, PosCurveKeys[i], bShouldTransact);
+                }
+            }
+            if (KeyFrameBone.BoneRotations.Num() > 0)
+            {
+                TArray<TArray<FRichCurveKey>> RotCurveKeys;
+                TArray<FRichCurveKey> RotationKeysZ;
+                TArray<FRichCurveKey> RotationKeysY;
+                TArray<FRichCurveKey> RotationKeysX;
+                FQuat Rel_Rotation;
+                if (Anim->Header.AnimType == ESEAnimAnimationType::SEANIM_ADDITIVE)
+                {
+                    Rel_Rotation =  BonePoseTransform.GetRotation();
+                }
+                else
+                {
+                    Rel_Rotation = FQuat(0, 0, 0, 1);
+                }
+
+                for (size_t i = 0; i < KeyFrameBone.BoneRotations.Num(); i++)
+                {
+                    auto BoneRotationKeyFrame = KeyFrameBone.BoneRotations[i];
+                    BoneRotationKeyFrame.Value *=  FQuat4f(Rel_Rotation);
+                    // Unreal uses other axis type than COD engine
+                    FRotator3f LocalRotator = BoneRotationKeyFrame.Value.Rotator();
                     LocalRotator.Yaw *= -1.0f;
                     LocalRotator.Roll *= -1.0f;
-                    Rotation = LocalRotator.Quaternion();
-                   RawAnimSequenceTrack.RotKeys.Add(FQuat4f(Rotation.X, Rotation.Y, Rotation.Z, Rotation.W));
+                    BoneRotationKeyFrame.Value = LocalRotator.Quaternion();
+                    auto TimeInSeconds = static_cast<float>(BoneRotationKeyFrame.Frame) / Anim->Header.FrameRate;
+                    RotationKeysX.Add(FRichCurveKey(TimeInSeconds, LocalRotator.Pitch));
+                    RotationKeysY.Add(FRichCurveKey(TimeInSeconds, LocalRotator.Yaw));
+                    RotationKeysZ.Add(FRichCurveKey(TimeInSeconds, LocalRotator.Roll));
+                    
                 }
-        
-                if (Scale != FVector3f(-1, -1, -1))
+                RotCurveKeys.Add(RotationKeysZ);
+                RotCurveKeys.Add(RotationKeysX);
+                RotCurveKeys.Add(RotationKeysY);
+                for (int i = 0; i < 3; ++i)
                 {
-                    RawAnimSequenceTrack.ScaleKeys.Add(Scale);
-                }
-                else
-                {
-                    RawAnimSequenceTrack.ScaleKeys.Add(FVector3f::OneVector);
+                    const EVectorCurveChannel Axis = static_cast<EVectorCurveChannel>(i);
+                    UAnimationCurveIdentifierExtensions::GetTransformChildCurveIdentifier(TransformCurveId, ETransformCurveChannel::Rotation, Axis);
+                    AnimSequence->GetController().SetCurveKeys(TransformCurveId, RotCurveKeys[i], bShouldTransact);
                 }
             }
-            int frc = Anim->Header.FrameCountBuffer;
-            for (size_t i = 0; i < Anim->Header.FrameCountBuffer; i++)
-            {
-                if (!RawAnimSequenceTrack.PosKeys.IsEmpty()&&  frc > RawAnimSequenceTrack.PosKeys.Num() )
-                {
-                    auto Copy = RawAnimSequenceTrack.PosKeys.Last();
-                    RawAnimSequenceTrack.PosKeys.Add(Copy);
-                }
-                if (!RawAnimSequenceTrack.RotKeys.IsEmpty() && frc > RawAnimSequenceTrack.RotKeys.Num())
-                {
-                    auto Copy = RawAnimSequenceTrack.RotKeys.Last();
-                    RawAnimSequenceTrack.RotKeys.Add(Copy);
-                }
-            }
-            FC2Anims AnimL;
-            AnimL.Name = FName(BoneInfo.Name);
-            AnimL.PosKeys = RawAnimSequenceTrack.PosKeys;
-            AnimL.RotKeys = RawAnimSequenceTrack.RotKeys;
-            AnimL.ScaleKeys = RawAnimSequenceTrack.ScaleKeys;
-            TracksAll.Add(AnimL);
-            Controller.SetBoneTrackKeys(FName(BoneInfo.Name), RawAnimSequenceTrack.PosKeys, RawAnimSequenceTrack.RotKeys, RawAnimSequenceTrack.ScaleKeys,bShouldTransact);
-        }
 
+        }
+        
         Controller.NotifyPopulated();
         Controller.CloseBracket();
         AnimSequence->Modify(true);
         AnimSequence->PostEditChange();
         FAssetRegistryModule::AssetCreated(AnimSequence);
-        AnimSequence->MarkPackageDirty();
+        bool bDirty = AnimSequence->MarkPackageDirty();
     }
     if (AnimSequence)
     {
@@ -200,7 +223,10 @@ UObject* UC2AnimAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
     return AnimSequence;
 }
 
-FMeshBoneInfo UC2AnimAssetFactory::GetBone(TArray<FMeshBoneInfo> Bones, const FString& AnimBoneName)
+
+
+
+FMeshBoneInfo UC2AnimAssetFactory::GetBone(const FString& AnimBoneName)
 {
     for (const auto& Bone : Bones)
     {
@@ -212,7 +238,7 @@ FMeshBoneInfo UC2AnimAssetFactory::GetBone(TArray<FMeshBoneInfo> Bones, const FS
     return FMeshBoneInfo();
 }
 
-int UC2AnimAssetFactory::GetBoneIndex(TArray<FMeshBoneInfo> Bones, const FString& AnimBoneName)
+int UC2AnimAssetFactory::GetBoneIndex(const FString& AnimBoneName)
 {
     for (int32 Index = 0; Index < Bones.Num(); ++Index)
     {

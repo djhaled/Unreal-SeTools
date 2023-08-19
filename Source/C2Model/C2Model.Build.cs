@@ -46,6 +46,7 @@ public class C2Model : ModuleRules
 				"CoreUObject",
 				"DesktopWidgets",
 				"EditorStyle",
+				"AnimationModifiers",
 				"Engine",
 				"EditorScriptingUtilities",
 				"PhysicsUtilities",
@@ -59,7 +60,7 @@ public class C2Model : ModuleRules
 				"UnrealEd",
 				"ApplicationCore",
 				"MeshDescription",
-				"StaticMeshDescription"
+				"StaticMeshDescription", "AnimationBlueprintLibrary"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
