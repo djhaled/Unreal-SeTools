@@ -4,18 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/Animations/SAnimImportOption.h"
 
-/**
- *
- *
- */
 
-enum class EPSAImportOptionDlgResponse : uint8
-{
-	Import,
-	ImportAll,
-	Cancel
-};
 class UUserMeshOptions;
 class C2MODEL_API SMeshImportOptions : public SCompoundWidget
 {
