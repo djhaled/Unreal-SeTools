@@ -6,7 +6,7 @@ class C2MODEL_API C2MTexture
 {
 public:
 	C2MTexture();
-	UObject* TextureObject;
+	UObject* TextureObject = NULL;
 	FString TextureName;
 	FString TexturePath;
 	FString TextureType;
