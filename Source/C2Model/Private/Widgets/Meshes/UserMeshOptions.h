@@ -52,6 +52,9 @@ public:
 	// Override the skeleton for this Skeletal Mesh.
 	UPROPERTY(EditAnywhere, Category = "Skeletal Mesh Settings", meta = (EditCondition = "MeshType == EMeshType::SkeletalMesh"))
 	TSoftObjectPtr<USkeleton> OverrideSkeleton;
+	UPROPERTY(EditAnywhere, Category = "Skeletal Mesh Settings", meta = (EditCondition = "MeshType == EMeshType::SkeletalMesh", Tooltip = "Overrides the skeleton Roll axis to face the actual mesh front axis. Older games use -90, Newer games use 90. Try both and see which one fixes it"))
+	float OverrideSkeletonRootRoll = 90.0f;
+
 
 
 	bool bInitialized;

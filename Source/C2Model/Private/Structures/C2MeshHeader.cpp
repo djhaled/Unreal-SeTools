@@ -28,10 +28,8 @@ void C2MeshHeader::ParseHeader(FLargeMemoryReader& Reader)
 	Reader << Version;
 	Reader << HeaderSize;
 	Reader << DataPresentFlags;
-	uint8_t DataPresent2;
-	uint8_t DataPresent3;
-	Reader << DataPresent2;
-	Reader << DataPresent3;
+	Reader << BonePresentFlags;
+	Reader << MeshPresentFlags;
 	Reader << BoneCountBuffer;
 	Reader << SurfaceCount;
 	Reader << MaterialCountBuffer;

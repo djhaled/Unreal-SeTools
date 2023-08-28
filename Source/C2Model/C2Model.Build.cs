@@ -37,7 +37,8 @@ public class C2Model : ModuleRules
 			}
 			);
 			
-		
+		PrivateDependencyModuleNames.AddRange(new string[] { "SkeletalMeshModelingTools" });
+		PrivateIncludePathModuleNames.AddRange(new string[] { "SkeletalMeshModelingTools" });
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
@@ -51,6 +52,7 @@ public class C2Model : ModuleRules
 				"EditorScriptingUtilities",
 				"PhysicsUtilities",
 				"InputCore",
+				"SkeletalMeshModelingTools",
 				"Projects",
 				"UnrealEd",
 				"Slate",

@@ -17,6 +17,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Import Settings")
 	TSoftObjectPtr<USkeleton> Skeleton;
 
+	UPROPERTY(EditAnywhere, Category = "Anim Settings", meta = (ToolTip = "Override the animation type if enabled"))
+	bool bOverrideAnimType;
+	
+	UPROPERTY(EditAnywhere, Category = "Anim Settings", meta = (ToolTip = "Specify the type of animation if override is enabled", EditCondition = "bOverrideAnimType"))
+	ESEAnimAnimationType AnimType;
+
+
+
 	bool bInitialized;
 
 

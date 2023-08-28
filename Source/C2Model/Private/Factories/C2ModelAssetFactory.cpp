@@ -39,7 +39,19 @@ UC2ModelAssetFactory::UC2ModelAssetFactory( const FObjectInitializer& ObjectInit
 
 UObject* UC2ModelAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, const FString& Filename, const TCHAR* Parms, FFeedbackContext* Warn, bool& bOutOperationCanceled)
 {
-	// Picker
+	// Load C2M File
+	TArray64<uint8> FileDataOld;
+	if (!FFileHelper::LoadFileToArray(FileDataOld, *Filename))
+	{
+		return nullptr;
+	}
+	// Create our base  Asset
+	UObject* MeshCreated = nullptr;
+	FString FileName_Fix = Filename.Replace(TEXT("_LOD0"),TEXT(""));
+	FLargeMemoryReader Reader(FileDataOld.GetData(), FileDataOld.Num());
+	C2Mesh* Mesh = new C2Mesh();
+	Mesh->ParseMesh(Reader);
+	Mesh->Header->MeshName =  FPaths::GetBaseFilename(FileName_Fix);
 	if (!UserSettings->bInitialized)
 	{
 		TSharedPtr<SMeshImportOptions> ImportOptionsWindow;
@@ -57,73 +69,66 @@ UObject* UC2ModelAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPar
 		(
 			SAssignNew(ImportOptionsWindow, SMeshImportOptions)
 			.WidgetWindow(Window)
+			.MeshHeader(Mesh)
 		);
 		UserSettings = ImportOptionsWindow.Get()->Options;
+		if (Mesh->Bones.Num() > 1)
+		{
+			UserSettings->MeshType = EMeshType::SkeletalMesh;
+		}
 		FSlateApplication::Get().AddModalWindow(Window, ParentWindow, false);
 		bImport = ImportOptionsWindow.Get()->ShouldImport();
 		bImportAll = ImportOptionsWindow.Get()->ShouldImportAll();
 		UserSettings->bInitialized = true;
 	}
-	// Create our base  Asset
-	UObject* MeshCreated = nullptr;
-	// Load C2M File
-	TArray64<uint8> FileDataOld;
-	if (FFileHelper::LoadFileToArray(FileDataOld, *Filename))
+	if (!UserSettings->bImportMaterials)
 	{
-		FString FileName_Fix = Filename.Replace(TEXT("_LOD0"),TEXT(""));
-		FLargeMemoryReader Reader(FileDataOld.GetData(), FileDataOld.Num());
-		C2Mesh* Mesh = new C2Mesh();
-		Mesh->ParseMesh(Reader);
-		Mesh->Header->MeshName =  FPaths::GetBaseFilename(FileName_Fix);
-		
-		if (!UserSettings->bImportMaterials)
-		{
-			Mesh->Materials.Empty();
-		}
-		FString DiskTexturesPath = FPaths::GetPath(FPaths::GetPath(Filename)) + "/_images/";
-		TArray<C2Material*> C2Materials;
-		FString UnrealTexturesPath = BaseDestPath + Mesh->Header->GameName + "Textures";
-		for (size_t i = 0; i < Mesh->Materials.Num(); i++)
-		{
-			auto mat = Mesh->Materials[i];
-			C2Material* CoDMaterial = new C2Material();
-			CoDMaterial->Header->MaterialName = mat.MaterialName;
-			for (size_t t = 0; t < mat.TextureNames.Num(); t++)
-			{
-				auto Texture = mat.TextureNames[t];
-				C2MTexture CodTexture;
-				CodTexture.TexturePath = Texture;
-				CodTexture.TextureName = FPaths::GetCleanFilename(Texture).Replace(TEXT(".png"), TEXT(""));
-				CodTexture.TextureType = mat.TextureTypes[t];
-
-				FString FixedTexture = Texture.Replace(TEXT("\\_images\\"), TEXT(""));
-
-				FString FixedImageFilePath = DiskTexturesPath + FixedTexture;
-				if (FPaths::FileExists(FixedImageFilePath))
-				{
-					CodTexture.TextureObject = ImportTexture(FixedImageFilePath, InParent);
-				}
-				else
-					CodTexture.TextureObject = nullptr;
-				CoDMaterial->Textures.Add(CodTexture);
-			}
-			C2Materials.Add(CoDMaterial);
-		}
-		// Model Stuff
-		FString ModelPackage = FPaths::Combine(TEXT("/Game"), Mesh->Header->GameName, TEXT("Models"));
-
-		C2MStaticMesh MeshBuildingClass;
-		MeshBuildingClass.MeshOptions = UserSettings;
-		if (UserSettings->bAutomaticallyDecideMeshType)
-		{
-			if (Mesh->Bones.Num() > 1)
-			{
-				UserSettings->MeshType = EMeshType::SkeletalMesh;
-			}
-		}
-
-		MeshCreated = MeshBuildingClass.CreateMesh(InParent,ModelPackage,Mesh,C2Materials);
+		Mesh->Materials.Empty();
 	}
+	FString DiskTexturesPath = FPaths::GetPath(FPaths::GetPath(Filename)) + "/_images/";
+	TArray<C2Material*> C2Materials;
+	FString UnrealTexturesPath = BaseDestPath + Mesh->Header->GameName + "Textures";
+	for (size_t i = 0; i < Mesh->Materials.Num(); i++)
+	{
+		auto mat = Mesh->Materials[i];
+		C2Material* CoDMaterial = new C2Material();
+		CoDMaterial->Header->MaterialName = mat.MaterialName;
+		for (size_t t = 0; t < mat.TextureNames.Num(); t++)
+		{
+			auto Texture = mat.TextureNames[t];
+			C2MTexture CodTexture;
+			CodTexture.TexturePath = Texture;
+			CodTexture.TextureName = FPaths::GetCleanFilename(Texture).Replace(TEXT(".png"), TEXT(""));
+			CodTexture.TextureType = mat.TextureTypes[t];
+
+			FString FixedTexture = Texture.Replace(TEXT("\\_images\\"), TEXT(""));
+
+			FString FixedImageFilePath = DiskTexturesPath + FixedTexture;
+			if (FPaths::FileExists(FixedImageFilePath))
+			{
+				CodTexture.TextureObject = ImportTexture(FixedImageFilePath, InParent);
+			}
+			else
+				CodTexture.TextureObject = nullptr;
+			CoDMaterial->Textures.Add(CodTexture);
+		}
+		C2Materials.Add(CoDMaterial);
+	}
+	// Model Stuff
+	FString ModelPackage = FPaths::Combine(TEXT("/Game"), Mesh->Header->GameName, TEXT("Models"));
+
+	C2MStaticMesh MeshBuildingClass;
+	MeshBuildingClass.MeshOptions = UserSettings;
+	if (UserSettings->bAutomaticallyDecideMeshType)
+	{
+		if (Mesh->Bones.Num() > 1)
+		{
+			UserSettings->MeshType = EMeshType::SkeletalMesh;
+		}
+	}
+
+	MeshCreated = MeshBuildingClass.CreateMesh(InParent,ModelPackage,Mesh,C2Materials);
+
 	if (MeshCreated)
 	{
 		UAssetEditorSubsystem* AssetEditorSubsystem = GEditor->GetEditorSubsystem<UAssetEditorSubsystem>();

@@ -97,6 +97,10 @@ UObject* UC2AnimAssetFactory::FactoryCreateFile(UClass* InClass, UObject* InPare
         FLargeMemoryReader Reader(FileDataOld.GetData(), FileDataOld.Num());
         C2Anim* Anim = new C2Anim();
         Anim->ParseAnim(Reader);
+        if (SettingsImporter->bOverrideAnimType)
+        {
+            Anim->Header.AnimType = SettingsImporter->AnimType;
+        }
         Controller.SetFrameRate(FFrameRate(Anim->Header.FrameRate, 1),bShouldTransact);
         Controller.SetNumberOfFrames(FFrameNumber(int(Anim->Header.FrameCountBuffer)), bShouldTransact);
         UE_LOG(LogTemp, Warning, TEXT("This animation '%s' is of type %s"), *Filename, *UEnum::GetValueAsString(Anim->Header.AnimType));

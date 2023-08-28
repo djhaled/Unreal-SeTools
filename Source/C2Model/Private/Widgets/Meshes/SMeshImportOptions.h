@@ -3,8 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Structures/C2Mesh.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Animations/SAnimImportOption.h"
+
 
 
 class UUserMeshOptions;
@@ -12,18 +14,22 @@ class C2MODEL_API SMeshImportOptions : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SMeshImportOptions)
-		: _WidgetWindow()
+		: _MeshHeader(nullptr)
+		, _WidgetWindow()
 	{}
 
+	SLATE_ARGUMENT(C2Mesh*, MeshHeader)
 	SLATE_ARGUMENT(TSharedPtr<SWindow>, WidgetWindow)
-		SLATE_END_ARGS()
+    
+	SLATE_END_ARGS()
 
-		SMeshImportOptions()
+	SMeshImportOptions()
 		: UserDlgResponse(EPSAImportOptionDlgResponse::Cancel)
 	{}
 	/** Constructs this widget with InArgs */
 	void Construct(const FArguments& InArgs);
-
+	static TSharedPtr<SHorizontalBox> AddNewHeaderProperty(FText InKey, FText InValue);
+	static TSharedPtr<SBorder> CreateMapHeader(C2Mesh* MeshHeader);
 	/** A property view to edit advanced options */
 	TSharedPtr< class IDetailsView >				PropertyView;
 
@@ -44,6 +50,7 @@ public:
 
 	FReply OnCancel();
 private:
+	C2Mesh* MeshHeader;
 	EPSAImportOptionDlgResponse		UserDlgResponse;
 	FReply HandleImport();
 
