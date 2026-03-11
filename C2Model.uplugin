@@ -1,23 +1,33 @@
-﻿{
-	"FileVersion": 3,
-	"Version": 1,
-	"VersionName": "0.8",
-	"FriendlyName": "C2Model",
-	"Description": "Tool to import meshes, animations from greyhound or exporters that use .semodel / .seanim formats",
-	"Category": "Other",
-	"CreatedBy": "bk",
-	"CreatedByURL": "",
-	"DocsURL": "",
-	"MarketplaceURL": "",
-	"CanContainContent": true,
-	"IsBetaVersion": false,
-	"IsExperimentalVersion": false,
-	"Installed": false,
-	"Modules": [
-		{
-			"Name": "C2Model",
-			"Type": "Runtime",
-			"LoadingPhase": "Default"
-		}
-	]
+{
+    "FileVersion": 3,
+    "Version": 1,
+    "VersionName": "1.0",
+    "FriendlyName": "C2Model Importer",
+    "Description": "Unreal Engine plugin for importing Call of Duty SEModel files (.semodel) with support for meshes, animations, and materials.",
+    "Category": "Importers",
+    "CreatedBy": "djhaled",
+    "CreatedByURL": "https://github.com/djhaled",
+    "DocsURL": "https://github.com/djhaled/Unreal-SeTools/blob/main/README.md",
+    "MarketplaceURL": "",
+    "SupportURL": "https://github.com/djhaled/Unreal-SeTools/issues",
+    "EngineVersion": "5.0.0",
+    "CanContainContent": true,
+    "IsBetaVersion": false,
+    "Installed": false,
+    "Modules": [
+        {
+            "Name": "C2Model",
+            "Type": "Editor",
+            "LoadingPhase": "Default",
+            "PlatformAllowList": [
+                "Win64"
+            ]
+        }
+    ],
+    "Plugins": [
+        {
+            "Name": "EditorScriptingUtilities",
+            "Enabled": true
+        }
+    ]
 }
