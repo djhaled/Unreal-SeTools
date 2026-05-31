@@ -16,6 +16,7 @@ public class C2Model : ModuleRules
 		PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
+    				System.IO.Path.GetFullPath(Target.RelativeEnginePath)+ "Plugins/Experimental/Animation/SkeletalMeshModelingTools/Source/"
 			}
 			);
 				
